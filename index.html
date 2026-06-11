@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Portal</title>
+  <style>
+    /* ---- same CSS as before (omitted for brevity) ---- */
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .login-container { background:white; border-radius:20px; box-shadow:0 20px 40px rgba(0,0,0,0.2); width:100%; max-width:420px; padding:2.5rem 2rem; animation:fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+    .login-container h2 { text-align:center; margin-bottom:1.8rem; color:#333; font-weight:600; font-size:1.8rem; }
+    .form-group { margin-bottom:1.3rem; }
+    .form-group label { display:block; margin-bottom:0.4rem; color:#555; font-weight:500; }
+    .form-group input { width:100%; padding:0.9rem 1rem; border:2px solid #e0e0e0; border-radius:10px; font-size:1rem; transition:border-color 0.3s, box-shadow 0.3s; outline:none; }
+    .form-group input:focus { border-color:#764ba2; box-shadow:0 0 0 3px rgba(118,75,162,0.2); }
+    .form-group input.error { border-color:#e74c3c; box-shadow:0 0 0 3px rgba(231,76,60,0.15); }
+    .button-group { display:flex; gap:1rem; margin-top:1.8rem; flex-wrap:wrap; }
+    .btn { flex:1; padding:0.9rem; border:none; border-radius:10px; font-size:1rem; font-weight:600; cursor:pointer; transition:transform 0.15s, box-shadow 0.2s; min-width:120px; }
+    .btn:active { transform:scale(0.97); }
+    .btn-login { background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; box-shadow:0 4px 12px rgba(118,75,162,0.3); }
+    .btn-login:hover { box-shadow:0 6px 18px rgba(118,75,162,0.45); }
+    .btn-reset { background:#f1f3f5; color:#555; }
+    .btn-reset:hover { background:#e9ecef; }
+    .message { margin-top:1.2rem; padding:0.8rem 1rem; border-radius:8px; font-weight:500; text-align:center; display:none; }
+    .message.show { display:block; }
+    .message.success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+    .message.error { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+    @media (max-width:480px) { .login-container { padding:1.8rem 1.3rem; } .btn { flex:100%; } }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Sign In</h2>
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Enter your username" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+      </div>
+      <div class="button-group">
+        <button type="submit" class="btn btn-login">Login</button>
+        <button type="reset" class="btn btn-reset">Cancel</button>
+      </div>
+      <div id="messageBox" class="message"></div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const messageBox = document.getElementById('messageBox');
+
+    function showMessage(text, type) {
+      messageBox.textContent = text;
+      messageBox.className = `message show ${type}`;
+    }
+    function hideMessage() { messageBox.className = 'message'; }
+    function clearErrors() { [usernameInput, passwordInput].forEach(i => i.classList.remove('error')); }
+
+    function validateForm() {
+      clearErrors();
+      hideMessage();
+      let isValid = true;
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      if (!username) { usernameInput.classList.add('error'); isValid = false; }
+      if (!password) { passwordInput.classList.add('error'); isValid = false; }
+      if (username && username.length < 3) { usernameInput.classList.add('error'); showMessage('Username must be at least 3 characters.', 'error'); isValid = false; }
+      if (password && password.length < 6) { passwordInput.classList.add('error'); showMessage('Password must be at least 6 characters.', 'error'); isValid = false; }
+      return isValid;
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      if (!validateForm()) {
+        if (!messageBox.classList.contains('show')) showMessage('Please fill in all fields correctly.', 'error');
+        return;
+      }
+      const loginBtn = form.querySelector('.btn-login');
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+      try {
+        const response = await fetch('/api/login', {   // ← changed to /api/login
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: usernameInput.value.trim(),
+            password: passwordInput.value.trim()
+          })
+        });
+        const result = await response.json();
+        if (response.ok && result.status === 'success') {
+          showMessage(result.message, 'success');
+        } else {
+          showMessage(result.message || 'Login failed.', 'error');
+        }
+      } catch (error) {
+        showMessage('Network error. Please try again.', 'error');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+      }
+    }
+
+    function handleReset() {
+      form.reset();
+      clearErrors();
+      hideMessage();
+      usernameInput.focus();
+    }
+
+    form.addEventListener('submit', handleLogin);
+    form.addEventListener('reset', handleReset);
+    [usernameInput, passwordInput].forEach(input => {
+      input.addEventListener('input', () => {
+        input.classList.remove('error');
+        if (messageBox.classList.contains('error')) hideMessage();
+      });
+    });
+  </script>
+</body>
+</html>
